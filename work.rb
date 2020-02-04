@@ -13,9 +13,8 @@ class User
   end
 end
 
-def parse_user(user)
-  fields = user.split(',')
-  parsed_result = {
+def parse_user(fields)
+  {
       'id' => fields[1],
       'first_name' => fields[2],
       'last_name' => fields[3],
@@ -23,9 +22,8 @@ def parse_user(user)
   }
 end
 
-def parse_session(session)
-  fields = session.split(',')
-  parsed_result = {
+def parse_session(fields)
+  {
       'user_id' => fields[1],
       'session_id' => fields[2],
       'browser' => fields[3],
@@ -42,21 +40,50 @@ def collect_stats_from_users(report, users_objects, &block)
   end
 end
 
+def load_from_file(source_data_file)
+
+  file_lines = File.read(source_data_file).split("\n").map{ |s| s.split(',') }
+
+  # users = []
+  # sessions = []
+
+  grouped_file_lines = file_lines.group_by{ |line| line[0] }
+
+  users = grouped_file_lines['user'].map{ |fields| parse_user(fields) }
+
+  sessions = grouped_file_lines['session'].map{|fields| parse_session(fields) }
+
+  # file_lines.each do |line|
+  #   if line[0] == 'user'
+  #     users = users + [parse_user(line)]
+  #   elsif line[0] == 'session'
+  #     sessions = sessions + [parse_session(line)]
+  #   end
+  # end
+
+  [users, sessions]
+end
+
+def make_user_objects(users, sessions)
+  users_objects = []
+
+  grouped_sessions = sessions.group_by{ |s| s['user_id'] }
+
+  users.each do |user|
+    attributes = user
+    user_sessions = grouped_sessions[user['id']] || []
+    user_object = User.new(attributes: attributes, sessions: user_sessions)
+    users_objects = users_objects + [user_object]
+  end
+  users_objects
+end
+
 def work(source_data_file = 'data.txt', disable_gc = false)
   puts 'Start work'
 
   GC.disable if disable_gc
 
-  file_lines = File.read(source_data_file).split("\n")
-
-  users = []
-  sessions = []
-
-  file_lines.each do |line|
-    cols = line.split(',')
-    users = users + [parse_user(line)] if cols[0] == 'user'
-    sessions = sessions + [parse_session(line)] if cols[0] == 'session'
-  end
+  users, sessions = load_from_file(source_data_file)
 
   # Отчёт в json
   #   - Сколько всего юзеров +
@@ -97,16 +124,7 @@ def work(source_data_file = 'data.txt', disable_gc = false)
           .join(',')
 
   # Статистика по пользователям
-  users_objects = []
-
-  grouped_sessions = sessions.group_by{ |s| s['user_id'] }
-
-  users.each do |user|
-    attributes = user
-    user_sessions = grouped_sessions[user['id']] || []
-    user_object = User.new(attributes: attributes, sessions: user_sessions)
-    users_objects = users_objects + [user_object]
-  end
+  users_objects = make_user_objects(users, sessions)
 
   report['usersStats'] = {}
 
