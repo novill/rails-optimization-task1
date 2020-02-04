@@ -1,5 +1,6 @@
+require_relative 'benchmark_realtime'
 require 'minitest/autorun'
-require_relative 'work'
+# require_relative 'work'
 
 class TestMe < Minitest::Test
   def setup
