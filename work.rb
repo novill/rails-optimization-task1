@@ -34,7 +34,7 @@ end
 
 def collect_stats_from_users(report, users_objects, &block)
   users_objects.each do |user|
-    user_key = "#{user.attributes['first_name']}" + ' ' + "#{user.attributes['last_name']}"
+    user_key = "#{user.attributes['first_name']} #{user.attributes['last_name']}"
     report['usersStats'][user_key] ||= {}
     report['usersStats'][user_key] = report['usersStats'][user_key].merge(block.call(user))
   end
@@ -78,10 +78,6 @@ def make_user_objects(users, sessions)
   users_objects
 end
 
-def calc_unique_browsers(sessions)
-  sessions.map{ |session| session['browser'] }.uniq
-end
-
 def work(source_data_file = 'data.txt', disable_gc = false)
   puts 'Start work'
 
@@ -109,7 +105,7 @@ def work(source_data_file = 'data.txt', disable_gc = false)
   report[:totalUsers] = users.count
 
   # Подсчёт количества уникальных браузеров
-  uniqueBrowsers = calc_unique_browsers(sessions)
+  uniqueBrowsers = sessions.map{ |session| session['browser'] }.uniq
 
   report['uniqueBrowsersCount'] = uniqueBrowsers.count
 
@@ -130,13 +126,12 @@ def work(source_data_file = 'data.txt', disable_gc = false)
 
 
   collect_stats_from_users(report, users_objects) do |user|
-    # Собираем количество сессий по пользователям
     { 'sessionsCount' => user.sessions.count ,
       'totalTime' => user.sessions.map {|s| s['time']}.map {|t| t.to_i}.sum.to_s + ' min.',
       'longestSession' => user.sessions.map {|s| s['time']}.map {|t| t.to_i}.max.to_s + ' min.',
       'browsers' => user.sessions.map {|s| s['browser']}.map {|b| b.upcase}.sort.join(', '),
-      'usedIE' => user.sessions.map{|s| s['browser']}.any? { |b| b.upcase =~ /INTERNET EXPLORER/ },
-      'alwaysUsedChrome' => user.sessions.map{|s| s['browser']}.all? { |b| b.upcase =~ /CHROME/ },
+      'usedIE' => user.sessions.map{|s| s['browser']}.any? { |b| b.upcase.start_with?('INTERNET EXPLORER') },
+      'alwaysUsedChrome' => user.sessions.map{|s| s['browser']}.all? { |b| b.upcase.start_with?('CHROME') },
       'dates' => user.sessions.map{|s| s['date']}.map {|d| Date.parse(d)}.sort.reverse.map { |d| d.iso8601 }
     }
   end
