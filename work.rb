@@ -126,13 +126,20 @@ def work(source_data_file = 'data.txt', disable_gc = false)
 
 
   collect_stats_from_users(report, users_objects) do |user|
+    prep_sessions = user.sessions.map{ |s|
+      [s['time'].to_i,
+       s['browser'].upcase,
+       Date.parse(s['date'])
+      ]
+    }
     { 'sessionsCount' => user.sessions.count ,
-      'totalTime' => user.sessions.map {|s| s['time']}.map {|t| t.to_i}.sum.to_s + ' min.',
-      'longestSession' => user.sessions.map {|s| s['time']}.map {|t| t.to_i}.max.to_s + ' min.',
-      'browsers' => user.sessions.map {|s| s['browser']}.map {|b| b.upcase}.sort.join(', '),
-      'usedIE' => user.sessions.map{|s| s['browser']}.any? { |b| b.upcase.start_with?('INTERNET EXPLORER') },
-      'alwaysUsedChrome' => user.sessions.map{|s| s['browser']}.all? { |b| b.upcase.start_with?('CHROME') },
-      'dates' => user.sessions.map{|s| s['date']}.map {|d| Date.parse(d)}.sort.reverse.map { |d| d.iso8601 }
+      'totalTime' => prep_sessions.sum(&:first).to_s + ' min.',
+      'longestSession' => prep_sessions.max{ |a, b| a[0] <=> b[0] }[0].to_s + ' min.',
+      'browsers' => prep_sessions.map {|ps| ps[1]}.sort.join(', '),
+      'usedIE' => prep_sessions.any? { |b| b[1].start_with?('INTERNET EXPLORER') },
+
+      'alwaysUsedChrome' => prep_sessions.all? { |b| b[1].start_with?('CHROME') },
+      'dates' => prep_sessions.map {|d| d[2].iso8601 }.sort.reverse
     }
   end
 
