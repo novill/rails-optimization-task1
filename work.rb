@@ -78,6 +78,15 @@ def make_user_objects(users, sessions)
   users_objects
 end
 
+def calc_unique_browsers(sessions)
+  uniqueBrowsers = []
+  sessions.each do |session|
+    browser = session['browser']
+    uniqueBrowsers += [browser] if uniqueBrowsers.all? { |b| b != browser }
+  end
+  uniqueBrowsers
+end
+
 def work(source_data_file = 'data.txt', disable_gc = false)
   puts 'Start work'
 
@@ -105,11 +114,7 @@ def work(source_data_file = 'data.txt', disable_gc = false)
   report[:totalUsers] = users.count
 
   # Подсчёт количества уникальных браузеров
-  uniqueBrowsers = []
-  sessions.each do |session|
-    browser = session['browser']
-    uniqueBrowsers += [browser] if uniqueBrowsers.all? { |b| b != browser }
-  end
+  uniqueBrowsers = calc_unique_browsers(sessions)
 
   report['uniqueBrowsersCount'] = uniqueBrowsers.count
 
