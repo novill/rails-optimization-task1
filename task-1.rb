@@ -34,8 +34,8 @@ session,2,3,Chrome 20,84,2016-11-25
   end
 
   def test_perfomance
-      lines = 100000
-      expected_time = 10.0
+      lines = 300000
+      expected_time = 7.0
       puts 'warming'
       work("data#{lines}.txt") # прогрев
       time = Benchmark.realtime { work("data#{lines}.txt") }

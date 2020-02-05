@@ -129,17 +129,18 @@ def work(source_data_file = 'data.txt', disable_gc = false)
     prep_sessions = user.sessions.map{ |s|
       [s['time'].to_i,
        s['browser'].upcase,
-       Date.parse(s['date'])
+       s['date']
+       # Date.parse(s['date'])
       ]
     }
-    { 'sessionsCount' => user.sessions.count ,
+    { 'sessionsCount' => user.sessions.size,
       'totalTime' => prep_sessions.sum(&:first).to_s + ' min.',
       'longestSession' => prep_sessions.max{ |a, b| a[0] <=> b[0] }[0].to_s + ' min.',
       'browsers' => prep_sessions.map {|ps| ps[1]}.sort.join(', '),
       'usedIE' => prep_sessions.any? { |b| b[1].start_with?('INTERNET EXPLORER') },
 
       'alwaysUsedChrome' => prep_sessions.all? { |b| b[1].start_with?('CHROME') },
-      'dates' => prep_sessions.map {|d| d[2].iso8601 }.sort.reverse
+      'dates' => prep_sessions.map {|d| d[2]}.sort.reverse
     }
   end
 
