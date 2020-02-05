@@ -32,13 +32,6 @@ def parse_session(fields)
   }
 end
 
-def collect_stats_from_users(report, users_objects, &block)
-  users_objects.each do |user|
-    report['usersStats']["#{user.attributes['first_name']} #{user.attributes['last_name']}"] = block.call(user)
-  end
-end
-
-
 def load_objects(source_data_file)
   grouped_file_lines = File.read(source_data_file).split("\n").map{ |s| s.split(',') }.group_by{ |line| line[0] }
 
@@ -50,6 +43,25 @@ def load_objects(source_data_file)
       map{ |fields| parse_user(fields) }.
       map{ |user| User.new(attributes: user, sessions: grouped_sessions[user['id']]) },
    sessions]
+end
+
+def get_user_stats(users_objects)
+  users_objects.map { |user|
+    prep_sessions = user.sessions.map{ |s| [s['time'].to_i, s['browser'].upcase, s['date'] ] }
+
+    [
+        "#{user.attributes['first_name']} #{user.attributes['last_name']}",
+        { 'sessionsCount' => user.sessions.size,
+          'totalTime' => prep_sessions.sum(&:first).to_s + ' min.',
+          'longestSession' => prep_sessions.max{ |a, b| a[0] <=> b[0] }[0].to_s + ' min.',
+          'browsers' => prep_sessions.map {|ps| ps[1]}.sort.join(', '),
+          'usedIE' => prep_sessions.any? { |b| b[1].start_with?('INTERNET EXPLORER') },
+
+          'alwaysUsedChrome' => prep_sessions.all? { |b| b[1].start_with?('CHROME') },
+          'dates' => prep_sessions.map {|d| d[2]}.sort.reverse
+        }
+    ]
+  }
 end
 
 def work(source_data_file = 'data.txt', disable_gc = false)
@@ -85,38 +97,43 @@ def work(source_data_file = 'data.txt', disable_gc = false)
 
   report['totalSessions'] = sessions.count
 
-  report['allBrowsers'] =
-      sessions
-          .map { |s| s['browser'] }
-          .map { |b| b.upcase }
-          .sort
-          .uniq
-          .join(',')
+  report['allBrowsers'] = sessions.map { |s| s['browser'] }.uniq.sort.join(',').upcase
 
   # Статистика по пользователям
 
-  report['usersStats'] = {}
-
-
-  collect_stats_from_users(report, users_objects) do |user|
-    prep_sessions = user.sessions.map{ |s|
-      [s['time'].to_i,
-       s['browser'].upcase,
-       s['date']
-       # Date.parse(s['date'])
-      ]
-    }
-    { 'sessionsCount' => user.sessions.size,
-      'totalTime' => prep_sessions.sum(&:first).to_s + ' min.',
-      'longestSession' => prep_sessions.max{ |a, b| a[0] <=> b[0] }[0].to_s + ' min.',
-      'browsers' => prep_sessions.map {|ps| ps[1]}.sort.join(', '),
-      'usedIE' => prep_sessions.any? { |b| b[1].start_with?('INTERNET EXPLORER') },
-
-      'alwaysUsedChrome' => prep_sessions.all? { |b| b[1].start_with?('CHROME') },
-      'dates' => prep_sessions.map {|d| d[2]}.sort.reverse
-    }
-  end
+  report['usersStats'] = get_user_stats(users_objects).to_h
 
   puts 'Finish work'
   File.write('result.json', "#{report.to_json}\n")
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
