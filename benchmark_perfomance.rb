@@ -12,9 +12,7 @@ describe 'Check performance metrics' do
   it "works under #{seconds} seconds" do
     skip 'no data file' unless File.exists?("data#{lines}.txt")
     expect {
-      work("data#{lines}.txt", true)
-      GC.enable
-      GC.start
+      work("data#{lines}.txt", false)
       }.to perform_under(seconds * 1000).ms.warmup(1).sample(2)
   end
 end

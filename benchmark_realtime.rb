@@ -7,6 +7,6 @@ require_relative 'work'
   # puts 'warming'
   # work("data#{lines}.txt") # прогрев
   # GC.start
-  time = Benchmark.realtime { work("data#{lines}.txt", true) }
+  time = Benchmark.realtime { work("data#{lines}.txt", false) }
   puts "Finish #{lines} lines in #{time.round(5)}"
 end
