@@ -8,7 +8,7 @@ require_relative 'work.rb'
 RubyProf.measure_mode = RubyProf::WALL_TIME
 
 result = RubyProf.profile do
-  work('data20000.txt', disable_gc: true)
+  work('data1500000.txt', disable_gc: true)
 end
 
 puts 'Report'

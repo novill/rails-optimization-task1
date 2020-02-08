@@ -22,8 +22,7 @@ user,2,Gregory,Santos,86
 session,2,0,Chrome 35,6,2018-09-21
 session,2,1,Safari 49,85,2017-05-22
 session,2,2,Firefox 47,17,2018-02-02
-session,2,3,Chrome 20,84,2016-11-25
-')
+session,2,3,Chrome 20,84,2016-11-25')
   end
 
   def test_result
