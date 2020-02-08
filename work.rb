@@ -1,57 +1,38 @@
 require 'oj'
 require 'date'
 
-def parse_user(fields)
-  {
-      'id' => fields[1],
-      'name' => "#{fields[2]} #{fields[3]}"
-  }
-end
+def parse_user_and_session(user_data)
 
-def parse_session(fields)
-  {
-      # 'user_id' => fields[1],
-      'browser' => fields[3].upcase,
-      'time' => fields[4].to_i,
-      'date' => fields[5]
-  }
-end
+  browsers, times, dates = user_data[1..-1].map do |session|
+    browser, time, date = *session.split(',')[2..5]
+    [browser.upcase, time.to_i, date]
+  end.transpose
 
-def load_objects(source_data_file)
-  grouped_file_lines = File.read(source_data_file).split("\n").map { |s| s.split(',') }.group_by { |line| line[0] }
-
-  sessions = grouped_file_lines['session'].map { |fields| [fields[1], parse_session(fields)] }
-
-  grouped_sessions = sessions.group_by { |s| s[0] }
-
-  [ grouped_file_lines['user'].
-      map { |fields| {attributes: parse_user(fields), sessions: grouped_sessions[fields[1]] } },
-    sessions]
-end
-
-def get_user_stats(users_objects)
-  users_objects.map do |user|
-    times, browsers, dates = *user[:sessions].map{ |s| [s[1]['time'], s[1]['browser'], s[1]['date'] ] }.transpose
-
-    [
-      user[:attributes]['name'],
-      { 'sessionsCount' => times.size,
-        'totalTime' => "#{times.sum} min.",
-        'longestSession' => "#{times.max} min.",
-        'browsers' => browsers.sort.join(', '),
-        'usedIE' => browsers.any?{ |b| b.start_with?('INTERNET EXPLORER') },
-
-        'alwaysUsedChrome' => browsers.all?{ |b| b.start_with?('CHROME') },
-        'dates' => dates.sort.reverse
-      }
-    ]
-  end
+  [
+      [ # собранныя статистика по пользователю
+          user_data[0].split(',')[1..2].join(' '),
+          {
+              'sessionsCount' =>user_data.size - 1,
+              'totalTime' => "#{times.sum} min.",
+              'longestSession' => "#{times.max} min.",
+              'browsers' => browsers.sort.join(', '),
+              'usedIE' => browsers.any?{ |b| b.start_with?('INTERNET EXPLORER') },
+              'alwaysUsedChrome' => browsers.all?{ |b| b.start_with?('CHROME') },
+              'dates' => dates.sort.reverse
+          }
+      ],
+      browsers, #массив браузеров пользователя
+  ]
 end
 
 def work(source_data_file = 'data.txt', disable_gc = false)
   GC.disable if disable_gc
 
-  users_objects, sessions = load_objects(source_data_file)
+  grouped_user_data = File.read(source_data_file).split("\nuser,").map{ |ss| ss.split("\nsession,") }
+
+  grouped_user_data[0][0]['user,'] = '' # Перед первым пользователем нет символа новой строки,
+
+  parsed_user_data = grouped_user_data.map{ |user_data| parse_user_and_session(user_data ) }
 
   # Отчёт в json
   #   - Сколько всего юзеров +
@@ -70,20 +51,20 @@ def work(source_data_file = 'data.txt', disable_gc = false)
 
   report = {}
 
-  report['totalUsers'] = users_objects.size
+  report['totalUsers'] = parsed_user_data.size
 
   # Подсчёт количества уникальных браузеров
-  uniqueBrowsers = sessions.map { |session| session[1]['browser'] }.uniq
+  uniqueBrowsers = parsed_user_data.flat_map { |user_data| user_data[1] }.uniq
 
   report['uniqueBrowsersCount'] = uniqueBrowsers.count
 
-  report['totalSessions'] = sessions.count
+  report['totalSessions'] = parsed_user_data.sum{ |user_data| user_data[0][1]['sessionsCount'] }
 
   report['allBrowsers'] = uniqueBrowsers.sort.join(',')
 
   # Статистика по пользователям
 
-  report['usersStats'] = get_user_stats(users_objects).to_h
+  report['usersStats'] = parsed_user_data.map(&:first).to_h
 
   File.write('result.json', Oj.dump(report)+"\n")
 end
